@@ -3,9 +3,13 @@
 
   inputs = {
     nixpkgs.url = "nixpkgs/nixos-22.05";
+    flake-compat = {
+      url = "github:edolstra/flake-compat";
+      flake = false;
+    };
   };
 
-  outputs = { self, nixpkgs }:
+  outputs = { self, nixpkgs, flake-compat }:
     let
       config = { allowUnfree = true; };
 
