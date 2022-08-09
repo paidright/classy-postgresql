@@ -1,0 +1,11 @@
+cabal-version:      2.4
+name:               classy-postgresql
+version:            0.1.0.0
+author:             gareth
+maintainer:         gareth.stokes@paidright.io
+
+library
+    exposed-modules:  ClassyPostgresql
+    build-depends:    base ^>=4.16.1.0
+    hs-source-dirs:   src
+    default-language: Haskell2010
