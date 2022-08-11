@@ -1,9 +1,10 @@
+{-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE OverloadedRecordDot #-}
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE NoImplicitPrelude #-}
 
 module Classy.Postgresql (mkConnectionPool) where
 
-import Classy.Prelude
+import Data.Pool (Pool)
 import qualified Data.Pool as Pool
 import qualified Database.PostgreSQL.Simple as Postgresql
 
@@ -19,7 +20,7 @@ A lightweight extention to PostgresqlSimple that adds
   * Easily manage transactions over multiple connections
 
 -}
-data PostgresqlError
+data Error
   = PgSqlError Postgresql.Query Postgresql.SqlError
   | PgQueryError Postgresql.Query Postgresql.QueryError
   | PgFormatError Postgresql.Query Postgresql.FormatError
@@ -29,18 +30,21 @@ data PostgresqlError
   | PgEncodingInvariant Postgresql.Query Text Text
   deriving (Show, Eq)
 
-makeClassyPrisms ''PostgresqlError
+makeClassyPrisms ''Error
 
-data ConnectionPool = ConnectionPool
+data Config = Config {poolCacheTTL :: !Double, poolMaxResources :: !Int}
 
 runConnectionPool ::
-  (MonadIO m, AsPostgresqlError e, MonadError e m) =>
-  ConnectionPool ->
-  (Postgresql.Connection -> m a) ->
+  (MonadIO m, AsError e, MonadError e m) =>
+  (Pool Postgresql.Connection) ->
+  (Postgresql.Connection -> IO a) ->
   m a
-runConnectionPool = undefined
+runConnectionPool pool f = liftIO $ Pool.withResource pool f
 
-mkConnectionPool :: ByteString -> undefined -> IO ConnectionPool
+mkConfig :: Config
+mkConfig = Config 1 1
+
+mkConnectionPool :: ByteString -> Config -> IO (Pool Postgresql.Connection)
 mkConnectionPool connectionString config = do
   let c =
         Pool.PoolConfig
@@ -49,8 +53,8 @@ mkConnectionPool connectionString config = do
           , Pool.freeResource =
               Postgresql.close
           , Pool.poolCacheTTL =
-              1
-          , Pool.poolMaxResources = 1
+              config.poolCacheTTL
+          , Pool.poolMaxResources =
+              config.poolMaxResources
           }
-  pool <- Pool.newPool c
-  undefined
+  Pool.newPool c

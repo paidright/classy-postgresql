@@ -1,6 +1,6 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 
-module Classy.Prelude (
+module Prelude (
   module X
   , strToText
   , strToBS
@@ -14,6 +14,25 @@ module Classy.Prelude (
   , bsFromStrict
 ) where
 
+import BasePrelude as X (
+  Bounded (..)
+  , Double
+  , Enum
+  , Eq (..)
+  , Integral (..)
+  , Num (..)
+  , Ord (..)
+  , Show (..)
+  , error
+  , fromIntegral
+  , fst
+  , seq
+  , snd
+  , undefined
+  , (/)
+  , (^)
+ )
+import qualified BasePrelude
 import Control.Applicative as X
 import Control.Lens as X (set, view)
 import Control.Lens.TH as X (makeClassyPrisms)
@@ -44,30 +63,11 @@ import qualified Data.Text.Lazy.Encoding
 import Data.Traversable as X
 import System.IO as X (IO, hPrint, hPutStrLn, stderr, stdin)
 import Text.Read as X (Read (..), readMaybe)
-import Prelude as X (
-  Bounded (..)
-  , Double
-  , Enum
-  , Eq (..)
-  , Integral (..)
-  , Num (..)
-  , Ord (..)
-  , Show (..)
-  , error
-  , fromIntegral
-  , fst
-  , seq
-  , snd
-  , undefined
-  , (/)
-  , (^)
- )
-import qualified Prelude
 
-strToText :: Prelude.String -> Text
+strToText :: BasePrelude.String -> Text
 strToText = Data.Text.pack
 
-strToBS :: Prelude.String -> ByteString
+strToBS :: BasePrelude.String -> ByteString
 strToBS = Data.ByteString.Char8.pack
 
 bsToText :: ByteString -> Text
