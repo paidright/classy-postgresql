@@ -2,3 +2,5 @@ cradle:
   cabal:
     - path: "./src"
       component: "classy-postgresql:lib:classy-postgresql"
+    - path: "./test"
+      component: "classy-postgresql:test:classy-postgresql-test"

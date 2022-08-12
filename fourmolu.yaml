@@ -1,8 +1,8 @@
 indentation: 2
 comma-style: leading
 import-export-comma-style: leading
-indent-wheres: false
-record-brace-space: false
+indent-wheres: true
+record-brace-space: true
 diff-friendly-import-export: true
 respectful: true
 haddock-style: multi-line
