@@ -23,7 +23,7 @@ A lightweight extention to PostgresqlSimple that adds
 
   * Classy optics + MTL for Postgres
   * A default transaction for every connection
-  * Easily manage transactions over multiple connections
+  * Easily manage transactions over multiple queries
 
 -}
 
