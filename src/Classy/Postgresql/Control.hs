@@ -79,11 +79,11 @@ data Config = Config
 
 data PgContext = PgContext Postgresql.Connection
 
-newtype ConnectionPool = ConnectionPool
+newtype ConnectionPool m = ConnectionPool
   { getConnectionPool ::
       forall a.
-      (Postgresql.Connection -> EitherT PgError IO a) ->
-      EitherT PgError IO a
+      (Postgresql.Connection -> m a) ->
+      m a
   }
 
 mkDefaultConfig :: ByteString -> Config
@@ -102,13 +102,13 @@ poolConfigFrom config =
         config.poolMaxResources
     }
 
-mkPoolWithTx :: Config -> IO ConnectionPool
+mkPoolWithTx :: Config -> IO (ConnectionPool (EitherT PgError IO))
 mkPoolWithTx config =
   mkPoolWith
     (\c -> Postgresql.withTransaction c)
     config
 
-mkPoolWithRollback :: Config -> IO ConnectionPool
+mkPoolWithRollback :: Config -> IO (ConnectionPool (EitherT PgError IO))
 mkPoolWithRollback config =
   mkPoolWith
     (\c -> bracket_ (Postgresql.begin c) (Postgresql.rollback c))
@@ -117,7 +117,7 @@ mkPoolWithRollback config =
 mkPoolWith ::
   (forall a. Postgresql.Connection -> IO a -> IO a) ->
   Config ->
-  IO ConnectionPool
+  IO (ConnectionPool (EitherT PgError IO))
 mkPoolWith transaction config = do
   pool <- Pool.newPool (poolConfigFrom config)
   pure $
@@ -134,9 +134,10 @@ mkPoolWith transaction config = do
               Right _ -> pure r
 
 runConnectionPool ::
-  ConnectionPool ->
-  ReaderT PgContext (EitherT PgError IO) a ->
-  EitherT PgError IO a
+  (MonadIO m, AsPgError e, MonadError e m) =>
+  ConnectionPool m ->
+  ReaderT PgContext m a ->
+  m a
 runConnectionPool pool action =
   getConnectionPool pool $ runReaderT action . PgContext
 
