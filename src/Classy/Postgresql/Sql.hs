@@ -59,9 +59,7 @@ data SqlService m = SqlService
 -- Implmentation
 --
 
-mkSqlService ::
-  (MonadIO m, AsPgError e, MonadError e m, MonadReader PgContext m) =>
-  SqlService m
+mkSqlService :: SqlService DbStatement
 mkSqlService =
   SqlService
     { query = \q p -> do

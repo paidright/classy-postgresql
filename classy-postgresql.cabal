@@ -34,11 +34,13 @@ library
     , postgresql-simple
     , resource-pool
     , text                 ^>=1.2.5.0
-    , text-show
     , transformers-either
 
   hs-source-dirs:   src
   default-language: Haskell2010
+  ghc-options:
+    -fprint-expanded-synonyms -Wall -Werror -Wredundant-constraints
+    -Wincomplete-record-updates -Wincomplete-uni-patterns
 
 test-suite classy-postgresql-test
   mixins:
@@ -49,13 +51,23 @@ test-suite classy-postgresql-test
   type:             exitcode-stdio-1.0
   hs-source-dirs:   test
   main-is:          Main.hs
-  other-modules:    Prelude
+  other-modules:
+    Prelude
+    Specs.App
+    Specs.Basic
+    Core.Person
+
   build-depends:
-    , base               ^>=4.16.1.0
-    , bytestring         ^>=0.11.3.0
+    , base                 ^>=4.16.1.0
+    , bytestring           ^>=0.11.3.0
     , classy-postgresql
-    , mtl                ^>=2.2.2
-    , postgresql-simple
-    , text               ^>=1.2.5.0
+    , hspec
     , lens
+    , mtl                  ^>=2.2.2
+    , postgresql-simple
+    , text                 ^>=1.2.5.0
     , transformers-either
+
+  ghc-options:
+    -fprint-expanded-synonyms -Werror -Wredundant-constraints
+    -Wincomplete-record-updates -Wincomplete-uni-patterns

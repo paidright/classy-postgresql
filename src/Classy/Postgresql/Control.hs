@@ -5,6 +5,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 
 module Classy.Postgresql.Control (
   PgError (..)
@@ -14,17 +15,19 @@ module Classy.Postgresql.Control (
   , PgContext (..)
   , mkDefaultConfig
   , poolConfigFrom
+  , ConnectionPool
   , mkPoolWith
   , mkPoolWithTx
   , mkPoolWithRollback
-  , runConnectionPool
+  , runDb
   , safely
   , safelyIO
+  , Postgresql (..)
+  , DbStatement
 ) where
 
-import Control.Exception (Exception, Handler (Handler), catches, throwIO, try)
+import Control.Exception (Exception, Handler (Handler), catches, throwIO)
 import Control.Exception.Base (bracket_)
-import Data.Pool (Pool)
 import qualified Data.Pool as Pool
 import qualified Database.PostgreSQL.Simple as Postgresql
 
@@ -108,48 +111,59 @@ poolConfigFrom config =
 
 data PgContext = PgContext Postgresql.Connection
 
-newtype ConnectionPool m = ConnectionPool
-  { getConnectionPool :: forall a. (Postgresql.Connection -> m a) -> m a
+newtype ConnectionPool = ConnectionPool
+  { getConnectionPool ::
+      forall a.
+      (Postgresql.Connection -> EitherT PgError IO a) ->
+      EitherT PgError IO a
   }
 
 mkPoolWith ::
   (forall a. Postgresql.Connection -> IO a -> IO a) ->
   Config ->
-  IO (ConnectionPool (EitherT PgError IO))
+  IO ConnectionPool
 mkPoolWith transaction config = do
   pool <- Pool.newPool (poolConfigFrom config)
-  pure $ ConnectionPool $ mkCallback pool transaction
-  where
-    mkCallback ::
-      (MonadIO m, AsPgError e, MonadError e m) =>
-      Pool Postgresql.Connection ->
-      (forall a. Postgresql.Connection -> IO a -> IO a) ->
-      (Postgresql.Connection -> EitherT PgError IO a) ->
-      m a
-    mkCallback pool tx callback =
-      liftIO . Pool.withResource pool $ \c -> tx c $ do
-        r <- runEitherT (callback c)
-        case r of
-          Left e -> throwIO (RollbackException e)
-          Right r' -> pure r'
+  pure $
+    ConnectionPool $ \callback -> do
+      liftIO . Pool.withResource pool $ \c -> transaction c $ do
+        e <- runEitherT (callback c)
+        case e of
+          Left err -> throwIO (RollbackException err)
+          Right result -> pure result
 
-mkPoolWithTx :: Config -> IO (ConnectionPool (EitherT PgError IO))
+mkPoolWithTx :: Config -> IO ConnectionPool
 mkPoolWithTx config =
   mkPoolWith Postgresql.withTransaction config
 
-mkPoolWithRollback :: Config -> IO (ConnectionPool (EitherT PgError IO))
+mkPoolWithRollback :: Config -> IO ConnectionPool
 mkPoolWithRollback config =
   mkPoolWith
     (\c -> bracket_ (Postgresql.begin c) (Postgresql.rollback c))
     config
 
-runConnectionPool ::
-  (MonadIO m, AsPgError e, MonadError e m) =>
-  ConnectionPool m ->
-  ReaderT PgContext m a ->
-  m a
-runConnectionPool pool action =
-  getConnectionPool pool $ runReaderT action . PgContext
+newtype DbStatement a = DbStatement
+  { runDbStatement :: ReaderT PgContext (EitherT PgError IO) a
+  }
+  deriving
+    ( Functor
+    , Applicative
+    , Monad
+    , MonadIO
+    , MonadError PgError
+    , MonadReader PgContext
+    )
+
+class (MonadIO m) => Postgresql m where
+  liftPG :: DbStatement a -> m a
+
+runDb ::
+  ConnectionPool ->
+  DbStatement a ->
+  IO (Either PgError a)
+runDb pool action =
+  runEitherT $
+    getConnectionPool pool $ runReaderT (runDbStatement action) . PgContext
 
 safelyIO ::
   Postgresql.Query ->
