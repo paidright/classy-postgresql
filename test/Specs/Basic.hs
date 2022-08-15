@@ -12,6 +12,7 @@ import Core.Person (Person (..), getPerson, newPerson, renderPerson)
 spec :: Spec
 spec = describe "Basic usage" $ do
   it "can create and get a person by id" $ do
+    -- use `mkPoolWithTx` in a real world app
     p <- mkPoolWithRollback (mkDefaultConfig "host=localhost dbname=classy")
 
     result <- runDb p $ do
